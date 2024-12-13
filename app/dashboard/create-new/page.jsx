@@ -14,6 +14,7 @@ function CreateNew({children}){
     const [loading,setLoading] = useState(false);
     const [videoScript,setvideoScript] = useState();
     const [audioFileURL,setAudioFileURL] = useState();
+    const [captions,setCaptions] = useState();
 
     const onHandleInputChange = (fieldName,fieldValue)=>{
       console.log(fieldName,fieldValue)
@@ -54,8 +55,20 @@ function CreateNew({children}){
       }).then(resp=>{
         console.log(resp.data);
         setAudioFileURL(resp.data.result);
+        GenerateAudioCaption(resp.data.result);
       })
       setLoading(false)
+    }
+
+    const GenerateAudioCaption = async(fileURL)=>{
+       setLoading(true);
+       await axios.post('/api/generate-caption',{
+        "audioFileURL":fileURL
+       }).then(resp=>{
+        console.log(resp.data.result);
+        setCaptions(resp.data.result);
+       })
+       setLoading(false);
     }
     return(
        <div className='md:px-20'>
