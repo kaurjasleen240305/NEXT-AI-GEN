@@ -1,13 +1,13 @@
 "use client"
-import React from "react";
+import React, { useState, useContext, useEffect } from "react";
 import SelectTopic from "./_components/selectTopic";
 import SelectStyle from "./_components/selectStyle";
 import SelectDuration from "./_components/selectDuration";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
 import axios from "axios"
 import { v4 as uuidv4 } from 'uuid';
 import CustomLoading from "./_components/CustomLoading";
+import { videoDataContext } from "@/app/_context/VideoDataContext";
 
 function CreateNew({children}){
     const [formData,setFormData] = useState([]);
@@ -15,6 +15,8 @@ function CreateNew({children}){
     const [videoScript,setvideoScript] = useState();
     const [audioFileURL,setAudioFileURL] = useState();
     const [captions,setCaptions] = useState();
+    const [imagesData,setImages] = useState();
+    const [videoData,setVideoData]=useContext(videoDataContext);
 
     const onHandleInputChange = (fieldName,fieldValue)=>{
       console.log(fieldName,fieldValue)
@@ -36,6 +38,10 @@ function CreateNew({children}){
         prompt:prompt
     }).then((resp)=>{
         console.log(resp.data);
+        setVideoData(prev=>({
+          ...prev,
+          'videoData':resp.data.result
+        }))
         setvideoScript(resp.data.result);
         GenerateAudioFile(resp.data.result);
     })
@@ -45,31 +51,67 @@ function CreateNew({children}){
     const GenerateAudioFile = async(videoScriptData)=>{
       let script = '';
       const id = uuidv4(); 
-      videoScriptData.forEach(item=>{
+      videoScriptData.forEach(async(item)=>{
         script = script+ item.ContentText+" ";
       })
       setLoading(true);
-      await axios.post('/api/generate-audio',{
+      const result=await axios.post('/api/generate-audio',{
         text:script,
         id:id
       }).then(resp=>{
         console.log(resp.data);
+        setVideoData(prev=>({
+          ...prev,
+          'audioFileURL':resp.data.result
+        }))
         setAudioFileURL(resp.data.result);
-        GenerateAudioCaption(resp.data.result);
+        resp.data.result&&GenerateAudioCaption(resp.data.Result,videoScriptData);
       })
       setLoading(false)
     }
 
-    const GenerateAudioCaption = async(fileURL)=>{
+    const GenerateAudioCaption = async(fileURL,videoScriptData)=>{
        setLoading(true);
-       await axios.post('/api/generate-caption',{
-        "audioFileURL":fileURL
+       console.log(fileURL);
+       const result = await axios.post('/api/generate-caption',{
+        audioFileURL:fileURL,
        }).then(resp=>{
-        console.log(resp.data.result);
-        setCaptions(resp.data.result);
+        console.log(resp?.data?.result);
+        setVideoData(prev=>({
+          ...prev,
+          'videoCaptions':resp.data.result
+        }))
+        setCaptions(resp?.data?.result);
+        resp?.data?.result&&GenerateImage(videoScriptData);
        })
        setLoading(false);
     }
+
+    const GenerateImage =  (videoScriptData) => {
+      let images=[]
+      console.log("started");
+      videoScriptData.forEach(async(element)=>{
+        console.log(element.imagePrompt)
+        await axios.post("/api/generate-image",{
+          prompt:element.imagePrompt
+        }).then(resp=>{
+           images.push(resp.data.result);
+           setVideoData(prev=>({
+            ...prev,
+            'imagesData':resp.data.result
+          }))
+           setImages(images);
+        });
+      })
+      console.log(images);
+  };
+
+
+  useEffect(()=>{
+     console.log(videoData);
+  },[videoData])
+
+
     return(
        <div className='md:px-20'>
         <h2 className="font-bold text-4xl text-primary text-center">CreateNew</h2>

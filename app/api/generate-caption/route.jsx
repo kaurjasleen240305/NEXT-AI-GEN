@@ -9,12 +9,10 @@ const client = new AssemblyAI({
 
 export async function POST(req){
     console.log("fhevhjf");
+    console.log(req);
     const x = await req.json();
-    console.log(x);
-    const {audioFileURL} = await req.json();
-    console.log(audioFileURL);
 
-    const fileUrl = audioFileURL;
+    const fileUrl = x.audioFileURL;
 
     const config = {
       audio: fileUrl
