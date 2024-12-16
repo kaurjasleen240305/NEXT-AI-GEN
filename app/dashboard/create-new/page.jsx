@@ -8,6 +8,10 @@ import axios from "axios"
 import { v4 as uuidv4 } from 'uuid';
 import CustomLoading from "./_components/CustomLoading";
 import { videoDataContext } from "@/app/_context/VideoDataContext";
+import { db } from "@/configs/db";
+import { useUser } from "@clerk/nextjs";
+import { VideoData as VideoDataModel } from "@/configs/schema";
+import PlayerDialog from "../_components/PlayerDialog";
 
 function CreateNew({children}){
     const [formData,setFormData] = useState([]);
@@ -17,6 +21,9 @@ function CreateNew({children}){
     const [captions,setCaptions] = useState();
     const [imagesData,setImages] = useState();
     const [videoData,setVideoData]=useContext(videoDataContext);
+    const [playVideo,setplayVideo]=useState(false);
+    const [videoId,setvideoId] = useState(2);
+    const {user} = useUser()
 
     const onHandleInputChange = (fieldName,fieldValue)=>{
       console.log(fieldName,fieldValue)
@@ -40,7 +47,7 @@ function CreateNew({children}){
         console.log(resp.data);
         setVideoData(prev=>({
           ...prev,
-          'videoData':resp.data.result
+          'scriptData':resp.data.result
         }))
         setvideoScript(resp.data.result);
         GenerateAudioFile(resp.data.result);
@@ -62,10 +69,11 @@ function CreateNew({children}){
         console.log(resp.data);
         setVideoData(prev=>({
           ...prev,
-          'audioFileURL':resp.data.result
+          'audioFileURL':resp.data.Result
         }))
-        setAudioFileURL(resp.data.result);
-        resp.data.result&&GenerateAudioCaption(resp.data.Result,videoScriptData);
+        setAudioFileURL(resp.data.Result);
+        console.log("reached marked")
+        GenerateAudioCaption(resp.data.Result,videoScriptData);
       })
       setLoading(false)
     }
@@ -82,7 +90,6 @@ function CreateNew({children}){
           'videoCaptions':resp.data.result
         }))
         setCaptions(resp?.data?.result);
-        resp?.data?.result&&GenerateImage(videoScriptData);
        })
        setLoading(false);
     }
@@ -96,10 +103,10 @@ function CreateNew({children}){
           prompt:element.imagePrompt
         }).then(resp=>{
            images.push(resp.data.result);
-           setVideoData(prev=>({
-            ...prev,
-            'imagesData':resp.data.result
-          }))
+          //  setVideoData(prev=>({
+          //   ...prev,
+          //   'imagesData':resp.data.result
+          // }))
            setImages(images);
         });
       })
@@ -108,8 +115,30 @@ function CreateNew({children}){
 
 
   useEffect(()=>{
-     console.log(videoData);
+    console.log("njregnj")
+    console.log(Object.keys(videoData).length);
+     if(Object.keys(videoData).length==3){
+        SaveVideoData(videoData);
+     }
   },[videoData])
+
+  const SaveVideoData=async(videoData)=>{
+    setLoading(true);
+    console.log("Visited");
+    console.log(user);
+    console.log(videoData);
+
+    const result = await db.insert(VideoDataModel).values({
+      script:videoData.scriptData,
+      audioFileURL:videoData.audioFileURL,
+      captions:videoData.videoCaptions,
+      createdBy:user.primaryEmailAddress.emailAddress,
+    }).returning({id:VideoDataModel.id});
+
+    setvideoId(result[0].id);
+    setplayVideo(true);
+    setLoading(false);
+  }
 
 
     return(
@@ -130,6 +159,7 @@ function CreateNew({children}){
             <Button className='mt-10 w-full' onClick={onClickCreateHandler}>Create Short Video</Button>
         </div>
         <CustomLoading loading={loading}/>
+        <PlayerDialog playVideo={playVideo} videoId={videoId}/>
        </div>
     )
 }

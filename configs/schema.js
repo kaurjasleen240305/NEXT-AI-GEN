@@ -1,4 +1,4 @@
-import { pgTable, serial,varchar,boolean,timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, serial,varchar,boolean,timestamp,json } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
@@ -9,3 +9,11 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 });
+
+export const VideoData = pgTable('videoData',{
+  id:serial('id').primaryKey(),
+  script:json('script').notNull(),
+  audioFileURL:varchar('audioFileURL').notNull(),
+  captions:json('captions').notNull(),
+  createdBy:varchar('createdBy').notNull(),
+})
